@@ -1,5 +1,5 @@
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
-
+local LocalPlayer = game:GetService("Players").LocalPlayer
 
 local Window = Fluent:CreateWindow({
 	Title = "BEERPIG HUB X Raise Animal",
@@ -15,6 +15,7 @@ local Tab = Window:AddTab({ Title = "Auto Buy Pet", Icon = "🐾" })
 
 
 _G.autoBuy = false
+_G.antiAfk = false
 local animalList = {"Lion","Narwhal","Crocodile","Polar Bear","Gorilla"}
 
 
@@ -25,6 +26,17 @@ local function buyAnimal(name)
 	}
 	game:GetService("ReplicatedStorage").Remote.Shop.Buy:FireServer(unpack(args))
 	print("ซื้อสัตว์:", name)
+end
+
+local function jump()
+	local Character = LocalPlayer.Character
+	if Character then
+		local Humanoid = Character:FindFirstChildOfClass("Humanoid")
+		if Humanoid and Humanoid.Health > 0 then
+			Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+			print("Anti-AFK: กระโดด")
+		end
+	end
 end
 
 
@@ -47,6 +59,26 @@ Tab:AddToggle("AutoBuy", {
 			end)
 		else
 			print("หยุด Auto Buy แล้ว")
+		end
+	end
+})
+
+Tab:AddToggle("AntiAFKToggle", {
+	Title = "Anti-AFK (กระโดด)",
+	Default = false,
+	Description = "กระโดดอัตโนมัติทุก 5 นาที",
+	Callback = function(state)
+		_G.antiAfk = state
+		if state then
+			print("เริ่ม Anti-AFK แล้ว")
+			task.spawn(function()
+				while _G.antiAfk do
+					jump()
+					task.wait(300) 
+				end
+			end)
+		else
+			print("หยุด Anti-AFK แล้ว")
 		end
 	end
 })
