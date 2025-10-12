@@ -1,0 +1,52 @@
+local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
+
+
+local Window = Fluent:CreateWindow({
+	Title = "BEERPIG HUB X Raise Animal",
+	SubTitle = "Auto Buy Legendary - Rainbow",
+	TabWidth = 160,
+	Size = UDim2.fromOffset(500, 350),
+	Acrylic = true, -- ถ้าอยากให้โปร่งใสเปลี่ยนเป็น true
+	Theme = "Dark"
+})
+
+
+local Tab = Window:AddTab({ Title = "Auto Buy Pet", Icon = "🐾" })
+
+
+_G.autoBuy = false
+local animalList = {"Lion","Narwhal","Crocodile","Polar Bear","Gorilla"}
+
+
+local function buyAnimal(name)
+	local args = {
+		[1] = "Animal",
+		[2] = {["ItemName"] = name}
+	}
+	game:GetService("ReplicatedStorage").Remote.Shop.Buy:FireServer(unpack(args))
+	print("ซื้อสัตว์:", name)
+end
+
+
+Tab:AddToggle("AutoBuy", {
+	Title = "Auto Buy Animals",
+	Default = false,
+	Description = "ซื้อสัตว์อัตโนมัติ (Legendary - Rainbow)",
+	Callback = function(state)
+		_G.autoBuy = state
+		if state then
+			print("เริ่ม Auto Buy แล้ว")
+			task.spawn(function()
+				while _G.autoBuy do
+					for _, animalName in ipairs(animalList) do
+						buyAnimal(animalName)
+						task.wait(2)
+					end
+					task.wait(115)
+				end
+			end)
+		else
+			print("หยุด Auto Buy แล้ว")
+		end
+	end
+})
