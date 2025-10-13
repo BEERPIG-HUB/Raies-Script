@@ -1,21 +1,29 @@
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
+
 local LocalPlayer = game:GetService("Players").LocalPlayer
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+-- 1. แก้ไข: เพิ่ม WaitForChild ให้ Remote Event เพื่อความเสถียร
+local ManagementEvent = ReplicatedStorage:WaitForChild("Remote", 10):WaitForChild("Events", 10):WaitForChild("ManagementEvent", 10) 
 
 local Window = Fluent:CreateWindow({
 	Title = "BEERPIG HUB X Raise Animal",
-	SubTitle = "Auto Buy Legendary - Rainbow",
+	SubTitle = "Good Script Raight now",
 	TabWidth = 160,
 	Size = UDim2.fromOffset(500, 350),
-	Acrylic = true, -- ถ้าอยากให้โปร่งใสเปลี่ยนเป็น true
+	Acrylic = true,
 	Theme = "Dark"
 })
 
 
-local Tab = Window:AddTab({ Title = "Auto Buy Pet", Icon = "🐾" })
+local BuyTab = Window:AddTab({ Title = "Auto Buy Pet", Icon = "🐾" }) 
+local FeedTab = Window:AddTab({ Title = "Auto Full Feed", Icon = "🍔" }) 
+local AFKTab = Window:AddTab({ Title = "Anti AFK", Icon = "🏃" })
 
 
 _G.autoBuy = false
 _G.antiAfk = false
+_G.autoFeed = false
 local animalList = {"Lion","Narwhal","Crocodile","Polar Bear","Gorilla"}
 
 
@@ -24,8 +32,41 @@ local function buyAnimal(name)
 		[1] = "Animal",
 		[2] = {["ItemName"] = name}
 	}
-	game:GetService("ReplicatedStorage").Remote.Shop.Buy:FireServer(unpack(args))
+	
+	ReplicatedStorage.Remote.Shop.Buy:FireServer(unpack(args)) 
 	print("ซื้อสัตว์:", name)
+end
+
+local function fullFeedAllPets()
+	-- 2. แก้ไข: ใช้ WaitForChild() เพื่อค้นหา GUI อย่างเสถียร
+	local Managements = LocalPlayer.PlayerGui:WaitForChild("Managements", 10) 
+	if not Managements then print("ERROR: ไม่พบ Managements ใน PlayerGui") return 0 end
+
+	local Frame = Managements:WaitForChild("Frame", 10)
+	if not Frame then print("ERROR: ไม่พบ Frame ภายใต้ Managements") return 0 end
+
+	local PetSlotsFrame = Frame:WaitForChild("PetSlots", 10) 
+	if not PetSlotsFrame then print("ERROR: ไม่พบ PetSlots Frame") return 0 end
+
+	local successCount = 0
+
+	for _, petFrame in ipairs(PetSlotsFrame:GetChildren()) do
+		if petFrame:IsA("Frame") and string.find(petFrame.Name, "|") then
+
+			-- ตรรกะส่วนนี้ถูกต้องแล้ว
+			local petArgument = petFrame.Name
+
+			local args = {
+				[1] = "FullFeed",
+				[2] = petArgument
+			}
+
+			ManagementEvent:FireServer(unpack(args))
+			successCount = successCount + 1
+			task.wait(0.05) -- ลดหน่วงเวลาเพื่อความรวดเร็ว
+		end
+	end
+	return successCount
 end
 
 local function jump()
@@ -40,7 +81,11 @@ local function jump()
 end
 
 
-Tab:AddToggle("AutoBuy", {
+-- =================================================================================
+-- UI Toggles
+-- =================================================================================
+
+BuyTab:AddToggle("AutoBuy", {
 	Title = "Auto Buy Animals",
 	Default = false,
 	Description = "ซื้อสัตว์อัตโนมัติ (Legendary - Rainbow)",
@@ -63,7 +108,28 @@ Tab:AddToggle("AutoBuy", {
 	end
 })
 
-Tab:AddToggle("AntiAFKToggle", {
+FeedTab:AddToggle("AutoFeedToggle", { -- ย้ายไปอยู่ FeedTab
+	Title = "Auto Full Feed",
+	Default = false,
+	Description = "Full Feed สัตว์ในสวนทุก 5 นาที",
+	Callback = function(state)
+		_G.autoFeed = state
+		if state then
+			print("เริ่ม Auto Full Feed แล้ว")
+			task.spawn(function()
+				while _G.autoFeed do
+					local count = fullFeedAllPets()
+					print("Auto Full Feed: ฟีดสัตว์ไปแล้ว", count, "ตัว")
+					task.wait(300) -- รอ 5 นาที (300 วินาที) ก่อนฟีดรอบต่อไป
+				end
+			end)
+		else
+			print("หยุด Auto Full Feed แล้ว")
+		end
+	end
+})
+
+AFKTab:AddToggle("AntiAFKToggle",
 	Title = "Anti-AFK (กระโดด)",
 	Default = false,
 	Description = "กระโดดอัตโนมัติทุก 5 นาที",
@@ -74,7 +140,7 @@ Tab:AddToggle("AntiAFKToggle", {
 			task.spawn(function()
 				while _G.antiAfk do
 					jump()
-					task.wait(300) 
+					task.wait(300)
 				end
 			end)
 		else
