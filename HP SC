@@ -1,0 +1,256 @@
+local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
+
+local LocalPlayer = game:GetService("Players").LocalPlayer
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+
+
+local ShopRemotes = ReplicatedStorage:WaitForChild("Shared", 10):WaitForChild("Remotes", 10):WaitForChild("ShopRemotes", 10)
+local BuyGachaRemote = ShopRemotes:WaitForChild("BuyGacha", 10) 
+
+
+local GachaContainer = game:GetService("Workspace"):WaitForChild("Containers", 10):WaitForChild("CoinGachaContainer", 10)
+local SpaceGacha = GachaContainer:WaitForChild("SpaceGacha", 10)
+local TriggerRemote = SpaceGacha:WaitForChild("Trigger", 10) 
+local FIXED_ROLL_DELAY = 0.1
+
+local OnlineRewardRemote = LocalPlayer.PlayerGui:WaitForChild("mainInterface", 10):WaitForChild("MainFrame", 10):WaitForChild("FrameHolder", 10):WaitForChild("OnlineRewardFrame", 10):WaitForChild("MainFrame", 10):FindFirstChild("OnlineReward.Server", 10).Rep
+
+
+local Window = Fluent:CreateWindow({
+	Title = "PHANTOM HUB X Head Please",
+	SubTitle = "Free Version",
+	TabWidth = 160,
+	Size = UDim2.fromOffset(500, 350),
+	Acrylic = true,
+	Theme = "Dark"
+})
+
+
+local GeneralTab = Window:AddTab({ Title = "General", Icon = "⚙️" })
+local RollTab = Window:AddTab({ Title = "Gacha Roll (x10/x50)", Icon = "🎰" })
+local VoidTab = Window:AddTab({ Title = "Void Roll (x10/x50)", Icon = "🌌" })
+
+
+_G.antiAfk = false
+_G.autoRoll = false 
+_G.autoEventRoll = false 
+_G.rollAmount = nil 
+_G.eventRollType = nil 
+_G.autoClaimReward = false
+
+
+local function jump()
+	local Character = LocalPlayer.Character
+	if Character then
+		local Humanoid = Character:FindFirstChildOfClass("Humanoid")
+		if Humanoid and Humanoid.Health > 0 then
+			Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+			print("Anti-AFK: กระโดด")
+		end
+	end
+end
+
+local function autoGachaRoll()
+	if not BuyGachaRemote then
+		print("Auto Gacha: ERROR! ไม่พบ Remote 'BuyGacha'")
+		return
+	end
+
+	local rollType = _G.rollAmount
+
+	if rollType then
+		
+		BuyGachaRemote:FireServer(rollType, nil)
+		print("Auto Gacha: Fired Remote 'BuyGacha' with type:", rollType)
+	else
+		print("Auto Gacha: ERROR! ไม่ได้เลือกจำนวน Roll (x10/x50)")
+	end
+end
+
+
+local function autoEventRoll()
+	if not TriggerRemote then
+		print("Auto Event Roll: ERROR! ไม่พบ Remote 'Trigger'")
+		return
+	end
+
+	local rollType = _G.eventRollType
+
+	if rollType then
+		
+		TriggerRemote:FireServer(rollType)
+		print("Auto Event Roll: Fired Remote 'Trigger' with type:", rollType)
+	else
+		print("Auto Event Roll: ERROR! ไม่ได้ตั้งค่า Event Roll Type")
+	end
+end
+
+local function autoClaimReward()
+	if not OnlineRewardRemote then
+		print("Auto Claim Reward: ERROR! ไม่พบ Remote 'Rep'")
+		return
+	end
+
+	-- วนลูปเพื่อรับของขวัญ 1 ถึง 15
+	for i = 1, 15 do
+		OnlineRewardRemote:FireServer(i)
+		print("Auto Claim Reward: Fired Remote 'Rep' with argument:", i)
+	end
+
+	-- หน่วงเวลา 0.1 วินาที (ตาม FIXED_ROLL_DELAY)
+	task.wait(FIXED_ROLL_DELAY)
+end
+
+-- =================================================================================
+-- UI Toggles
+-- =================================================================================
+
+GeneralTab:AddToggle("AntiAFKToggle", {
+	Title = "Anti-AFK ",
+	Default = false,
+	Description = "Jump Any 5 minite",
+	Callback = function(state)
+		_G.antiAfk = state
+		if state then print("เริ่ม Anti-AFK แล้ว") task.spawn(function()
+				while _G.antiAfk do jump() task.wait(300) end
+			end) else print("หยุด Anti-AFK แล้ว") end
+	end
+})
+
+GeneralTab:AddToggle("AutoClaimRewardToggle", {
+	Title = "Auto Claim Reward (1-15)",
+	Default = false,
+	Description = "Calm Reward Auto",
+	Callback = function(state)
+		_G.autoClaimReward = state
+		if state then
+			print("เริ่ม Auto Claim Reward แล้ว")
+			task.spawn(function()
+				while _G.autoClaimReward do
+					autoClaimReward()
+					task.wait(FIXED_ROLL_DELAY) -- หน่วงเวลาระหว่างการวนลูป (0.1s)
+				end
+			end)
+		else
+			print("หยุด Auto Claim Reward แล้ว")
+		end
+	end
+})
+
+
+RollTab:AddToggle("AutoRollX10Toggle", {
+	Title = "Auto Roll x10",
+	Default = false,
+	Description = "Roll 10",
+	Callback = function(state)
+		_G.autoRoll = state
+		if state then
+			
+			_G.eventRollType = nil
+
+			_G.rollAmount = "x10"
+			print("เริ่ม Auto Roll x10 ที่ 0.5 วินาทีแล้ว")
+			task.spawn(function()
+				while _G.autoRoll and _G.rollAmount == "x10" do 
+					autoGachaRoll()
+					task.wait(FIXED_ROLL_DELAY) 
+				end
+			end)
+		else
+			if _G.rollAmount == "x10" then 
+				_G.rollAmount = nil
+			end
+			print("หยุด Auto Roll x10 แล้ว")
+		end
+	end
+})
+
+RollTab:AddToggle("AutoRollX50Toggle", {
+	Title = "Auto Roll x50 Only Gamepass",
+	Default = false,
+	Description = "Roll 50",
+	Callback = function(state)
+		_G.autoRoll = state
+		if state then
+			
+			_G.autoEventRoll = false
+			_G.eventRollType = nil
+
+			_G.rollAmount = "x50"
+			print("เริ่ม Auto Roll x50 ที่ 0.5 วินาทีแล้ว")
+			task.spawn(function()
+				while _G.autoRoll and _G.rollAmount == "x50" do 
+					autoGachaRoll()
+					task.wait(FIXED_ROLL_DELAY) 
+				end
+			end)
+		else
+			if _G.rollAmount == "x50" then
+				_G.rollAmount = nil
+			end
+			print("หยุด Auto Roll x50 แล้ว")
+		end
+	end
+})
+
+
+
+VoidTab:AddToggle("AutoEventRollX10Toggle", {
+	Title = "Auto Void Roll x10",
+	Default = false,
+	Description = "Roll Void 10 ",
+	Callback = function(state)
+		_G.autoEventRoll = state
+		if state then
+		
+			_G.autoRoll = false
+			_G.rollAmount = nil
+
+			_G.eventRollType = "x10"
+			print("เริ่ม Auto Event Roll x10 ที่ 0.5 วินาทีแล้ว")
+			task.spawn(function()
+				while _G.autoEventRoll and _G.eventRollType == "x10" do 
+					autoEventRoll()
+					task.wait(FIXED_ROLL_DELAY) 
+				end
+			end)
+		else
+			if _G.eventRollType == "x10" then
+				_G.eventRollType = nil
+			end
+			print("หยุด Auto Event Roll x10 แล้ว")
+		end
+	end
+})
+
+
+
+VoidTab:AddToggle("AutoEventRollX50Toggle", {
+	Title = "Auto Void Roll x50 only Gamepass",
+	Default = false,
+	Description = "Roll Void 50 ",
+	Callback = function(state)
+		_G.autoEventRoll = state
+		if state then
+			
+			_G.autoRoll = false
+			_G.rollAmount = nil
+
+			_G.eventRollType = "x50"
+			print("เริ่ม Auto Event Roll x50 ที่ 0.5 วินาทีแล้ว")
+			task.spawn(function()
+				while _G.autoEventRoll and _G.eventRollType == "x50" do 
+					autoEventRoll()
+					task.wait(FIXED_ROLL_DELAY) 
+				end
+			end)
+		else
+			if _G.eventRollType == "x50" then
+				_G.eventRollType = nil
+			end
+			print("หยุด Auto Event Roll x50 แล้ว")
+		end
+	end
+})
